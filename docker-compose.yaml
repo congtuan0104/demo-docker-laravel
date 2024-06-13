@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: laravel_app
+    container_name: laravel_app
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:Ism/0WbqLK3U2w+3LeSWsgI+uGe4iy6QJi6ccCh5mvs=
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=learn_laravel
+      - DB_USERNAME=root
+      - DB_PASSWORD=12345
+
+  db:
+    image: mysql:5.7
+    container_name: laravel_db
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=12345
+      - MYSQL_DATABASE=learn_laravel
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=12345
+    volumes:
+      - dbdata:/var/lib/mysql
+
+volumes:
+  dbdata:
