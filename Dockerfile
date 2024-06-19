@@ -1,41 +1,48 @@
-# Sử dụng image PHP chính thức với Apache
-FROM php:8.1-apache
+# Sử dụng hình ảnh PHP chính thức với Apache
+FROM php:8.2-apache
 
-# Thiết lập các biến môi trường
-ENV DEBIAN_FRONTEND noninteractive
-
-# Cài đặt các phần mở rộng PHP và các công cụ cần thiết
+# Cài đặt các phần mở rộng PHP cần thiết
 RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
+    libonig-dev \
+    libzip-dev \
+    zip \
+    unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd pdo pdo_mysql \
-    && pecl install xdebug \
-    && docker-php-ext-enable xdebug
+    && docker-php-ext-install gd mbstring pdo pdo_mysql zip \
+    && curl -sL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+    
 
 # Cài đặt Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Kích hoạt module Apache mod_rewrite
-RUN a2enmod rewrite
+# Sao chép nội dung dự án vào container
+COPY . /var/www/html
+
+# Sao chép tệp cấu hình Apache vào container
+COPY apache.conf /etc/apache2/sites-available/000-default.conf
+
+# Đặt quyền cho thư mục
+RUN chown -R www-data:www-data /var/www/html \
+    && a2enmod rewrite
 
 # Thiết lập thư mục làm việc
 WORKDIR /var/www/html
 
-# Sao chép tệp composer.json và composer.lock trước khi sao chép mã nguồn
-COPY composer.json composer.lock ./
+# Chạy Composer để cài đặt các gói PHP
+RUN composer install
 
-# Chạy Composer để cài đặt các phụ thuộc
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist || { cat /var/www/html/composer.log && false; }
+# Cài đặt các gói Node.js
+RUN npm install
 
-# Sao chép mã nguồn vào container
-COPY . .
+# Copy tệp .env.example thành .env và thiết lập APP_KEY
+RUN cp .env.example .env
+RUN php artisan key:generate
 
-# Thiết lập quyền truy cập
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Expose port 80
+EXPOSE 80
 
-# Lệnh để chạy container
 CMD ["apache2-foreground"]
